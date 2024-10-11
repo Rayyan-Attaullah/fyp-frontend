@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronRight, Upload } from "lucide-react"
+import { ChevronRight, Upload, X } from "lucide-react"
 
 export default function Component() {
   const [page, setPage] = useState(1)
   const [cancerType, setCancerType] = useState("")
-  const [image, setImage] = useState(null)
+  const [image, setImage] = useState([])
 
   const handleNextPage = () => {
     if (cancerType) {
@@ -15,16 +15,28 @@ export default function Component() {
   }
 
   const handleImageUpload = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImage(e.target.files[0])
+    if (e.target.files && e.target.files.length > 0) {
+      if (cancerType === "lung") {
+        // For lung cancer, allow multiple images
+        setImage([...e.target.files])
+      } else {
+        // For other cancers, allow only one image
+        setImage([e.target.files[0]])
+      }
     }
   }
 
+  const handleImageRemove = (index) => {
+    const updatedImages = [...image]
+    updatedImages.splice(index, 1)
+    setImage(updatedImages)
+  }
+
   const handleSubmit = () => {
-    if (image) {
-      console.log("Submitting image for", cancerType)
-      // Here you would typically send the image to your server
-      alert(`Image for ${cancerType} submitted successfully!`)
+    if (image.length > 0) {
+      console.log("Submitting images for", cancerType)
+      // Here you would typically send the images to your server
+      alert(`Images for ${cancerType} submitted successfully!`)
     }
   }
 
@@ -59,7 +71,7 @@ export default function Component() {
           </div>
         ) : (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-800">Upload {cancerType} Cancer Image</h2>
+            <h2 className="text-xl font-semibold text-gray-800">Upload {cancerType} Cancer Image{cancerType === "lung" ? "s" : ""}</h2>
             <div className="flex items-center justify-center w-full">
               <label
                 htmlFor="dropzone-file"
@@ -72,13 +84,31 @@ export default function Component() {
                   </p>
                   <p className="text-xs text-gray-500">PNG, JPG or GIF (MAX. 800x400px)</p>
                 </div>
-                <input id="dropzone-file" type="file" className="hidden" onChange={handleImageUpload} accept="image/*" />
+                <input
+                  id="dropzone-file"
+                  type="file"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  multiple={cancerType === "lung"} // Allow multiple files only for lung cancer
+                />
               </label>
             </div>
-            {image && <p className="text-sm text-gray-500">File selected: {image.name}</p>}
+            {image.length > 0 && (
+              <div>
+                {image.map((img, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500">File selected: {img.name}</p>
+                    <button onClick={() => handleImageRemove(index)} className="ml-2 text-red-500 hover:text-red-700">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <button
               onClick={handleSubmit}
-              disabled={!image}
+              disabled={image.length === 0}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Submit
