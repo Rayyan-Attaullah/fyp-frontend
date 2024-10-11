@@ -7,6 +7,8 @@ export default function Component() {
   const [page, setPage] = useState(1)
   const [cancerType, setCancerType] = useState("")
   const [image, setImage] = useState([])
+  const [prediction, setPrediction] = useState(null) // Store prediction result
+  const [submittedImage, setSubmittedImage] = useState(null) // Store submitted image
 
   const handleNextPage = () => {
     if (cancerType) {
@@ -17,10 +19,8 @@ export default function Component() {
   const handleImageUpload = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       if (cancerType === "lung") {
-        // For lung cancer, allow multiple images
         setImage([...e.target.files])
       } else {
-        // For other cancers, allow only one image
         setImage([e.target.files[0]])
       }
     }
@@ -32,18 +32,40 @@ export default function Component() {
     setImage(updatedImages)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (image.length > 0) {
-      console.log("Submitting images for", cancerType)
-      // Here you would typically send the images to your server
-      alert(`Images for ${cancerType} submitted successfully!`)
+      console.log("Submitting images for", cancerType);
+
+      const formData = new FormData();
+      formData.append('file', image[0]);
+
+      try {
+        const response = await fetch('http://localhost:5000/predict', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Update state with prediction and submitted image
+          setPrediction(result.prediction);
+          setSubmittedImage(URL.createObjectURL(image[0])); // Create image URL for rendering
+        } else {
+          alert(`Error: ${result.error}`);
+        }
+      } catch (error) {
+        console.error("Error submitting images:", error);
+        alert("Failed to submit image");
+      }
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-blue-50 flex items-center justify-center">
       <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
         <h1 className="text-3xl font-bold text-blue-800 mb-6 text-center">Cancer Image Analysis</h1>
+        
         {page === 1 ? (
           <div className="space-y-4">
             <label htmlFor="cancer-type" className="block text-sm font-medium text-gray-700">
@@ -69,7 +91,7 @@ export default function Component() {
               <ChevronRight className="ml-2 h-5 w-5" />
             </button>
           </div>
-        ) : (
+        ) : prediction === null ? ( // Check if prediction is null (not submitted yet)
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-gray-800">Upload {cancerType} Cancer Image{cancerType === "lung" ? "s" : ""}</h2>
             <div className="flex items-center justify-center w-full">
@@ -90,7 +112,7 @@ export default function Component() {
                   className="hidden"
                   onChange={handleImageUpload}
                   accept="image/*"
-                  multiple={cancerType === "lung"} // Allow multiple files only for lung cancer
+                  multiple={cancerType === "lung"}
                 />
               </label>
             </div>
@@ -118,6 +140,26 @@ export default function Component() {
               className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Back
+            </button>
+          </div>
+        ) : ( // Render the prediction component
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800">Prediction Result</h2>
+            {submittedImage && (
+              <div className="flex flex-col items-center">
+                <img src={submittedImage} alt="Uploaded" className="w-48 h-48 object-cover mb-4" />
+                <p className="text-lg font-bold">Prediction: {prediction}</p>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setPrediction(null); // Reset prediction
+                setImage([]); // Reset image state
+                setPage(1); // Go back to the first page
+              }}
+              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Back to Upload
             </button>
           </div>
         )}
